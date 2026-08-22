@@ -1,0 +1,128 @@
+Notes By Anunay ( validate the schema , use G by flask for auth , use enums for eg admin,user,staff, try jwt auth , try to use all the BE skills to make this production ready and keep recalling)
+
+Yt link for ref (https://www.youtube.com/watch?v=CPXYy54Bloo)
+
+Notes Extra :  Create a Gemini Based APi that uses gemini api key and has a context to generate output based on 3 user inputs that is 1. The searched location , 2. Top 5 trending locations for travel ,3.Top 5 budget friendly options (Though you can set these manually also for the project to work and then go ahead with the gemini method)
+Users 
+Admin - Admin
+Trek Staff - Staff
+Users - User
+
+Admin: A user with the highest level of access who manages the entire trekking system.
+Trek Staff: A staff member responsible for managing and coordinating assigned treks.
+User (Trekker): A participant who books and participates in trekking activities. 
+
+Db structure :
+User Table
+User id || Username || Password || Type of User 
+
+Trek Table
+Trek ID || Trek Name || Location || Difficulty (Easy / Moderate / Hard) || Duration (in days) || Available Slots || Assigned Staff ID || Status (Pending / Approved / Open / Closed / Completed) || Start Date || End Date || Extra fields etc.
+
+
+Booking: A record of a user booking a trek.
+Attributes:
+
+Booking ID || User ID || Trek ID || Booking Date || Status (Booked / Cancelled / Completed) || Payment Status (Optional) || Extra fields etc.
+
+
+Staff Profile: Details of a registered staff member.
+Attributes:
+
+Staff ID || Name || Contact Details || Assigned Trek(s) || Status || Extra fields etc.
+
+
+Authentication 
+Login/register for Users (Trekker)
+Login only for Admin and Trek Staff (no registration)
+Only one Admin must exist and should be created programmatically
+Role-based access control and authentication using Flask security (session or token) or JWT based Token.
+A unified user model to differentiate all types of user roles.
+
+
+Admin Functionalities
+
+Admin dashboard showing:
+Total number of treks
+Total number of users and staffs
+Total number of bookings
+Admin must pre-exist and be created programmatically after database creation. [No admin registration allowed]
+Admin can:
+Create and manage treks routes
+Add a new trek staff
+Assign staff to treks
+View all bookings
+Search users, staff, and treks
+Deactivate or blacklist users/staff
+
+Trek Staff Functionalities
+
+Staff dashboard should display:
+Assigned treks by admin
+Number of registered user per trek
+Staff can:
+Update trek slots and status
+View and manage participant list
+Mark trek as started/completed
+
+User Functionalities
+
+Users must self-register and log in
+User dashboard should display:
+Available treks
+Booked treks
+Trek status
+Users can:
+Book treks
+View booking status
+View trekking history - Fe Design - done
+Edit their profile - Fe Design - done
+Search treks
+
+
+
+Backend Jobs (Using Celery)
+a. Scheduled Job – Daily Reminders - The application should send daily reminders to users on g-chat using Google Chat Webhooks or SMS or mail
+
+Send reminders to users about upcoming treks, including trek start date, instructions, etc.
+Can be sent via email, SMS, or webhook
+Runs daily at a chosen time
+
+b. Scheduled Job – Monthly Activity Report - Devise a monthly report for the Admin created using HTML and sent via mail.
+
+Generate monthly trekking activity report for Admin
+Includes:
+Number of treks conducted
+Number of users participated
+Popular treks
+Generated on the first day of every month
+Sent to Admin via email (HTML or PDF)
+c. User Triggered Async Job – Export Booking History as CSV
+
+Users can export their trekking history
+CSV should include:
+User ID
+Trek Name
+Location
+Booking Status
+Dates
+Triggered from user dashboard
+Export is triggered from the student dashboard.
+This should trigger a batch job, and send an alert once done.
+
+Performance and Caching
+
+Use Redis caching for:
+Frequently accessed treks
+Implement cache expiry
+Optimize API response times
+
+Other Core Functionalities
+
+Prevent overbooking beyond available slots
+Ensure only assigned staff can manage a trek
+Allow booking only when trek status is Open
+Prevent duplicate bookings for same trek
+Maintain complete trekking history per user
+Allow searching and filtering of treks
+Allow admin to view all historical trekking data

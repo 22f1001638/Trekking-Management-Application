@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trek Management</title>
+    <!-- Bootstrap 5 (wireframe styling only) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3">
+    </script>
+</head>
+<body>
+
+    <div id="app" class="container py-4">
+
+        <!-- ====================================================== -->
+        <!--  LOGIN / REGISTER PAGE (shown when loggedIn === false) -->
+        <!-- ====================================================== -->
+        <div v-if="!loggedIn" class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+
+                <!-- Login form -->
+                <div v-if="!showRegister" class="border rounded p-4">
+                    <h4 class="mb-1">Trek Management</h4>
+                    <p class="text-muted small mb-3">Sign in to continue</p>
+
+                    <form @submit.prevent="handleLogin">
+                        <div class="mb-3">
+                            <label class="form-label">Email address</label>
+                            <input type="email" class="form-control" v-model="loginForm.email"
+                            placeholder="name@example.com" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" v-model="loginForm.password"
+                            placeholder="Enter password" required />
+                        </div>
+                        <div v-if="loginError" class="alert alert-danger py-2 small">
+                            {{ loginError }}
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Log In</button>
+                    </form>
+
+                    <p class="text-muted small mt-3 mb-0">
+                        Don't have an account?
+                        <a href="#" @click.prevent="showRegister = true; clearMessages()">Register</a>
+                    </p>
+                </div>
+
+                <!-- Registration form -->
+                <div v-else class="border rounded p-4">
+                    <h4 class="mb-1">Create Account</h4>
+                    <p class="text-muted small mb-3">Register to access the dashboard</p>
+
+                    <form @submit.prevent="handleRegister">
+                        <div class="mb-3">
+                            <label class="form-label">Full name</label>
+                            <input type="text" class="form-control" v-model="registerForm.name"
+                            placeholder="Your name" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email address</label>
+                            <input type="email" class="form-control" v-model="registerForm.email"
+                            placeholder="name@example.com" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" v-model="registerForm.password"
+                            placeholder="Choose a password" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirm password</label>
+                            <input type="password" class="form-control" v-model="registerForm.confirmPassword"
+                            placeholder="Re-enter password" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone number</label>
+                            <input type="text" class="form-control" v-model="registerForm.phone"
+                            placeholder="Phone number" required />
+                        </div>
+                        <div v-if="registerError" class="alert alert-danger py-2 small">
+                            {{ registerError }}
+                        </div>
+                        <div v-if="registerSuccess" class="alert alert-success py-2 small">
+                            Registration successful! Please log in.
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Register</button>
+                    </form>
+
+                    <p class="text-muted small mt-3 mb-0">
+                        Already have an account?
+                        <a href="#" @click.prevent="showRegister = false; clearMessages()">Log in</a>
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ====================================================== -->
+        <!--  MAIN APP (shown when loggedIn === true)              -->
+        <!-- ====================================================== -->
+        <div v-else>
+
+            <!-- top bar -->
+            <div class="border rounded p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Trek Management</h4>
+                    <button class="btn btn-outline-secondary btn-sm" @click="handleLogout">
+                        Logout
+                    </button>
+                </div>
+
+                <!-- navigation tabs -->
+                <ul class="nav nav-tabs mt-3">
+                    <li class="nav-item" v-for="link in links">
+                        <a class="nav-link" :class="{ active: selectedPage === link.key }"
+                        href="#" @click.prevent="selectPage(link.key)">
+                        {{ link.text }}
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- page content -->
+        <div class="border rounded p-3">
+            <h5>{{ pageTitle }}</h5>
+            <p class="text-muted">{{ content }}</p>
+
+            <!-- Dashboard -->
+            <div v-if="selectedPage === 'dashboard'">
+                <p>Overview of treks, bookings, and staff.</p>
+            </div>
+
+            <!-- Treks -->
+            <div v-else-if="selectedPage === 'treks'">
+                <p>List of treks</p>
+                <ul class="list-group mt-2">
+                    <li class="list-group-item" v-for="trek in treks">
+                        {{ trek.name }} – {{ trek.route }}
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Bookings -->
+            <div v-else-if="selectedPage === 'bookings'">
+                <p>List of bookings</p>
+                <ul class="list-group mt-2">
+                    <li class="list-group-item" v-for="booking in bookings">
+                        {{ booking.customer }} – {{ booking.trek }}
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Staff -->
+            <div v-else-if="selectedPage === 'staff'">
+                <p>List of staff members</p>
+                <ul class="list-group mt-2">
+                    <li class="list-group-item" v-for="person in staff">
+                        {{ person.name }} – {{ person.role }}
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Users -->
+            <div v-else-if="selectedPage === 'users'">
+                <p>Registered users</p>
+                <ul class="list-group mt-2">
+                    <li class="list-group-item" v-for="user in users">
+                        {{ user.name }} — {{ user.role }} — {{ user.email }}
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Assigned Treks -->
+            <div v-else-if="selectedPage === 'assigned'">
+                <p>Treks assigned to you</p>
+                <ul class="list-group mt-2">
+                    <li class="list-group-item" v-for="trek in assignedTreks">
+                        {{ trek.name }} – {{ trek.route }} ({{ trek.status }})
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+    <!-- end main app -->
+
+</div>
+<!-- end #app -->
+
+
+<script>
+    Vue.createApp({
+
+        data() {
+            return {
+                apiRoot: 'http://127.0.0.1:5000/users',
+
+                // ---------- auth state ----------
+                loggedIn: false,
+                loginError: '',
+                loginForm: {
+                    email: '',
+                    password: ''
+                },
+
+                // ---------- registration state ----------
+                showRegister: false,
+                registerForm: {
+                    name: '',
+                    email: '',
+                    password: '',
+                    confirmPassword: '',
+                    phone: ''
+                },
+                registerError: '',
+                registerSuccess: false,
+
+                currentUser: null,
+
+                // ---------- main app data ----------
+                pageTitle: 'Dashboard',
+                content: 'Simple wireframe-style layout for trek management.',
+                selectedPage: 'dashboard',
+                links: [],
+                treks: [],
+                bookings: [],
+                staff: [],
+                users: [],
+                assignedTreks: []
+            };
+        },
+
+        methods: {
+            async handleLogin() {
+                this.loginError = '';
+                try {
+                    const response = await fetch(`${this.apiRoot}/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: this.loginForm.email.trim(),
+                            password: this.loginForm.password
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok) {
+                        this.loginError = data.message || 'Login failed. Please try again.';
+                        return;
+                    }
+
+                    this.currentUser = data;
+                    this.loggedIn = true;
+                    this.loginError = '';
+                    this.showRegister = false;
+                    this.setLinksForRole(data.role);
+                    this.selectPage('dashboard');
+                } catch (error) {
+                    this.loginError = 'Unable to reach server. Please try again later.';
+                }
+            },
+
+            async handleRegister() {
+                this.registerError = '';
+                this.registerSuccess = false;
+
+                const { name, email, password, confirmPassword, phone } = this.registerForm;
+                if (!name.trim() || !email.trim() || !password || !confirmPassword || !phone.trim()) {
+                    this.registerError = 'All fields are required.';
+                    return;
+                }
+                if (password !== confirmPassword) {
+                    this.registerError = 'Passwords do not match.';
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${this.apiRoot}/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: name.trim(),
+                            email_id: email.trim(),
+                            password,
+                            phone_num: phone.trim()
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok) {
+                        this.registerError = data.message || 'Registration failed. Please try again.';
+                        return;
+                    }
+
+                    this.registerSuccess = true;
+                    this.registerForm = { name: '', email: '', password: '', confirmPassword: '', phone: '' };
+                    setTimeout(() => {
+                        this.showRegister = false;
+                        this.registerSuccess = false;
+                        this.loginForm.email = email.trim();
+                        this.loginForm.password = '';
+                    }, 1200);
+                } catch (error) {
+                    this.registerError = 'Unable to reach server. Please try again later.';
+                }
+            },
+
+            handleLogout() {
+                this.loggedIn = false;
+                this.currentUser = null;
+                this.loginForm = { email: '', password: '' };
+                this.registerError = '';
+                this.registerSuccess = false;
+                this.showRegister = false;
+                this.selectedPage = 'dashboard';
+                this.links = [];
+                this.treks = [];
+                this.bookings = [];
+                this.staff = [];
+                this.users = [];
+                this.assignedTreks = [];
+            },
+
+            clearMessages() {
+                this.loginError = '';
+                this.registerError = '';
+                this.registerSuccess = false;
+            },
+
+            setLinksForRole(role) {
+                if (role === 'admin') {
+                    this.links = [
+                        { text: 'Dashboard', key: 'dashboard' },
+                        { text: 'Treks', key: 'treks' },
+                        { text: 'Bookings', key: 'bookings' },
+                        { text: 'Staff', key: 'staff' },
+                        { text: 'Users', key: 'users' }
+                    ];
+                } else if (role === 'staff') {
+                    this.links = [
+                        { text: 'Dashboard', key: 'dashboard' },
+                        { text: 'Treks', key: 'treks' },
+                        { text: 'Assigned Treks', key: 'assigned' }
+                    ];
+                } else {
+                    this.links = [
+                        { text: 'Dashboard', key: 'dashboard' },
+                        { text: 'Treks', key: 'treks' },
+                        { text: 'Bookings', key: 'bookings' }
+                    ];
+                }
+            },
+
+            selectPage(key) {
+                this.selectedPage = key;
+                const pageMap = {
+                    dashboard: { title: 'Dashboard', text: 'Overview of your trek role and data.' },
+                    treks: { title: 'Treks', text: 'Available trek list from the backend.' },
+                    bookings: { title: 'Bookings', text: 'Bookings for the current user or admin overview.' },
+                    staff: { title: 'Staff', text: 'Active staff members managed by admin.' },
+                    users: { title: 'Users', text: 'Registered user accounts.' },
+                    assigned: { title: 'Assigned Treks', text: 'Treks assigned to the logged-in staff member.' }
+                };
+                const p = pageMap[key] || pageMap.dashboard;
+                this.pageTitle = p.title;
+                this.content = p.text;
+                this.loadPageData(key);
+            },
+
+            async loadPageData(key) {
+                if (!this.currentUser) {
+                    return;
+                }
+
+                const userId = this.currentUser.user_id;
+                try {
+                    if (key === 'dashboard') {
+                        if (this.currentUser.role === 'admin') {
+                            const res = await fetch(`${this.apiRoot}/admin_dashboard/${userId}`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                this.content = `Total treks: ${data.total_treks}, users: ${data.total_users}, staff: ${data.total_staff}, bookings: ${data.total_bookings}`;
+                            }
+                        } else if (this.currentUser.role === 'staff') {
+                            this.content = 'Use Assigned Treks to view the treks assigned to you.';
+                        } else {
+                            this.content = 'Use Treks to view available trips and Bookings to review your reservations.';
+                        }
+                    }
+
+                    if (key === 'treks') {
+                        const res = await fetch(`${this.apiRoot}/get_trek`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.treks = data.map(t => ({
+                                name: t.trek_name,
+                                route: t.location,
+                                status: t.status,
+                                slots: t.available_slots
+                            }));
+                        }
+                    }
+
+                    if (key === 'bookings') {
+                        const url = this.currentUser.role === 'admin'
+                            ? `${this.apiRoot}/get_all_bookings/${userId}`
+                            : `${this.apiRoot}/get_bookings/${userId}`;
+                        const res = await fetch(url);
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.bookings = data.map(b => ({
+                                customer: `User ${b.user_id}`,
+                                trek: `Trek ${b.trek_id}`
+                            }));
+                        }
+                    }
+
+                    if (key === 'staff') {
+                        const res = await fetch(`${this.apiRoot}/get_all_staff/${userId}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.staff = data.map(u => ({ name: u.user_name, role: u.type_of_user }));
+                        }
+                    }
+
+                    if (key === 'users') {
+                        const res = await fetch(`${this.apiRoot}/get_all_users/${userId}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.users = data.map(u => ({ name: u.user_name, role: u.type_of_user, email: u.email_id }));
+                        }
+                    }
+
+                    if (key === 'assigned') {
+                        const res = await fetch(`${this.apiRoot}/get_assigned_treks/${userId}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.assignedTreks = data.map(t => ({ name: t.trek_name, route: t.location, status: t.status }));
+                        }
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        }
+
+    }).mount('#app');
+</script>
+
+</body>
+</html>

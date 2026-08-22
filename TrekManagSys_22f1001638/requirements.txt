@@ -1,0 +1,10 @@
+flask
+flask-sqlalchemy
+flask_jwt_extended
+flask-migrate
+pandas
+flask-cors
+redis
+APScheduler
+twilio
+requests

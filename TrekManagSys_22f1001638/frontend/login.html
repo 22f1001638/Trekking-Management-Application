@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trek Management System</title>
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Axios CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-light">
+
+    <div id="app" class="container py-4">
+
+        <!-- LOGIN / REGISTER -->
+        <div v-if="!loggedIn" class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <!-- Login Card -->
+                <div v-if="!showRegister" class="border rounded p-4 bg-white shadow-sm">
+                    <h4 class="mb-1">Trek Management</h4>
+                    <p class="text-muted small mb-3">Sign in to continue</p>
+                    <form @submit.prevent="handleLogin">
+                        <div class="mb-3">
+                            <label class="form-label">User Name</label>
+                            <input type="text" class="form-control" v-model="loginForm.username" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" v-model="loginForm.password" required />
+                        </div>
+                        <div v-if="loginError" class="alert alert-danger py-2 small">{{ loginError }}</div>
+                        <button type="submit" class="btn btn-primary w-100" :disabled="loading">
+                            <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
+                            Log In
+                        </button>
+                    </form>
+                    <p class="text-muted small mt-3 mb-0">
+                        Don't have an account?
+                        <a href="#" @click.prevent="showRegister = true; clearMessages()">Register</a>
+                    </p>
+                </div>
+
+                <!-- Register Card -->
+                <div v-else class="border rounded p-4 bg-white shadow-sm">
+                    <h4 class="mb-1">Create Account</h4>
+                    <p class="text-muted small mb-3">Register to access the dashboard</p>
+                    <form @submit.prevent="handleRegister">
+                        <div class="mb-3">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" class="form-control" v-model="registerForm.name" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone Number</label>
+                            <input type="tel" class="form-control" v-model="registerForm.phone_num" required pattern="[0-9]{10}" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" class="form-control" v-model="registerForm.email" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" v-model="registerForm.password" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" v-model="registerForm.confirmPassword" required />
+                        </div>
+                        <div v-if="registerError" class="alert alert-danger py-2 small">{{ registerError }}</div>
+                        <div v-if="registerSuccess" class="alert alert-success py-2 small">
+                            Registration successful! Please log in.
+                        </div>
+                        <button type="submit" class="btn btn-success w-100" :disabled="loading">
+                            <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
+                            Register
+                        </button>
+                    </form>
+                    <p class="text-muted small mt-3 mb-0">
+                        Already have an account?
+                        <a href="#" @click.prevent="showRegister = false; clearMessages()">Log in</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN DASHBOARD -->
+        <div v-else>
+            <!-- Top bar -->
+            <div class="border rounded p-3 mb-3 bg-white shadow-sm">
+                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                    <div>
+                        <h4 class="mb-0">Trek Management System</h4>
+                        <span class="text-muted small">
+                            Welcome, <strong>{{ currentUser.username }}</strong> (Role: {{ currentUser.role }})
+                        </span>
+                    </div>
+                    <button class="btn btn-outline-danger btn-sm" @click="handleLogout">Logout</button>
+                </div>
+
+                <!-- Nav Tabs -->
+                <ul class="nav nav-tabs mt-3">
+                    <li class="nav-item" v-for="link in navLinks" :key="link.key">
+                        <a class="nav-link" :class="{ active: selectedPage === link.key }" href="#" @click.prevent="selectPage(link.key)">
+                            {{ link.text }}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Page Content -->
+            <div class="border rounded p-4 bg-white shadow-sm">
+
+                <!-- DASHBOARD PAGE -->
+                <div v-if="selectedPage === 'dashboard'">
+                    <h5>Dashboard Overview</h5>
+                    <p class="text-muted">Welcome back to the portal.</p>
+
+                    <!-- ADMIN ROLE -->
+                    <div v-if="currentUser.role === 'admin'" class="row g-3 mt-2">
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="border rounded p-3 text-center bg-light">
+                                <h6 class="text-muted mb-1">Total Treks</h6>
+                                <span class="display-6">{{ treks.length }}</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="border rounded p-3 text-center bg-light">
+                                <h6 class="text-muted mb-1">Total Staff</h6>
+                                <span class="display-6">{{ staffList.length }}</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="border rounded p-3 text-center bg-light">
+                                <h6 class="text-muted mb-1">Total Bookings</h6>
+                                <span class="display-6">{{ allBookings.length }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STAFF ROLE -->
+                    <div v-else-if="currentUser.role === 'staff'" class="row g-3 mt-2">
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3 text-center bg-light">
+                                <h6 class="text-muted mb-1">Assigned Treks</h6>
+                                <span class="display-6">{{ assignedTreks.length }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- USER ROLE -->
+                    <div v-else-if="currentUser.role === 'user'" class="row g-3 mt-2">
+                        <div class="col-sm-6">
+                            <div class="border rounded p-3 text-center bg-light">
+                                <h6 class="text-muted mb-1">Available Treks</h6>
+                                <span class="display-6">{{ treks.length }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TREKS PAGE -->
+                <div v-else-if="selectedPage === 'treks'">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-column flex-md-row gap-3">
+                        <div>
+                            <h5 class="mb-0">Trek Packages</h5>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <input type="text" class="form-control form-control-sm" placeholder="Search treks..." v-model="searchTrekQuery" @keyup.enter="searchTreks" style="min-width: 220px;" />
+                            <select class="form-select form-select-sm" v-model="searchTrekStatus" style="min-width: 160px;">
+                                <option value="">All Statuses</option>
+                                <option value="open">Open</option>
+                                <option value="started">Started</option>
+                                <option value="approved">Approved</option>
+                                <option value="pending">Pending</option>
+                                <option value="complete">Complete</option>
+                                <option value="closed">Closed</option>
+                            </select>
+                            <select class="form-select form-select-sm" v-model="searchTrekDifficulty" style="min-width: 160px;">
+                                <option value="">All Levels</option>
+                                <option value="easy">Easy</option>
+                                <option value="moderate">Moderate</option>
+                                <option value="hard">Hard</option>
+                            </select>
+                            <button class="btn btn-secondary btn-sm" @click="searchTreks">Search</button>
+                            <button class="btn btn-outline-secondary btn-sm" @click="clearTrekSearch">Clear</button>
+                            <button v-if="currentUser.role === 'admin'" class="btn btn-primary btn-sm" @click="showCreateTrekForm = !showCreateTrekForm">
+                                {{ showCreateTrekForm ? 'Cancel' : '+ Create New Trek' }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Create Trek Form matching TrekTable -->
+                    <div v-if="showCreateTrekForm && currentUser.role === 'admin'" class="card card-body mb-4 bg-light">
+                        <h6>Create New Trek</h6>
+                        <form @submit.prevent="handleCreateTrek" class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Trek Name</label>
+                                <input type="text" class="form-control" v-model="newTrek.trek_name" required />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Location / Route</label>
+                                <input type="text" class="form-control" v-model="newTrek.location" required />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Price</label>
+                                <input type="number" step="0.01" class="form-control" v-model="newTrek.price" required />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Duration (Days)</label>
+                                <input type="number" class="form-control" v-model="newTrek.duration" required />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Available Slots</label>
+                                <input type="text" class="form-control" v-model="newTrek.available_slots" required placeholder="e.g. 20" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Assigned Slot</label>
+                                <input type="text" class="form-control" v-model="newTrek.assigned_slot" placeholder="e.g. Slot A" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Difficulty</label>
+                                <select class="form-select" v-model="newTrek.difficulty" required>
+                                    <option value="Easy">Easy</option>
+                                    <option value="Moderate">Moderate</option>
+                                    <option value="Hard">Hard</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Assigned Staff ID</label>
+                                <input type="number" class="form-control" v-model="newTrek.assigned_staff_id" required />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" v-model="newTrek.status" required>
+                                    <option value="pending">pending</option>
+                                    <option value="approved">approved</option>
+                                    <option value="open">open</option>
+                                    <option value="closed">closed</option>
+                                    <option value="complete">complete</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Start Date (YYYY-MM-DD)</label>
+                                <input type="text" class="form-control" v-model="newTrek.start_date" required placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">End Date (YYYY-MM-DD)</label>
+                                <input type="text" class="form-control" v-model="newTrek.end_date" required placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" />
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-success btn-sm" :disabled="loading">
+                                    <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
+                                    Submit Trek
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Trek List -->
+                    <div v-if="treksLoading" class="text-center py-3">
+                        <div class="spinner-border text-primary"></div>
+                    </div>
+                    <div v-else-if="treks.length === 0" class="text-muted">No treks found.</div>
+                    <div v-else class="row g-3">
+                        <div v-for="trek in treks" :key="trek.trek_id || trek.id" class="col-md-6 col-lg-4">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h5 class="card-title">{{ trek.trek_name || trek.name }}</h5>
+                                            <h6 class="card-subtitle mb-2 text-muted">{{ trek.location }}</h6>
+                                        </div>
+                                    </div>
+                                    <p class="card-text mb-1"><strong>Price:</strong> ${{ trek.price }}</p>
+                                    <p class="card-text mb-1"><strong>Duration:</strong> {{ trek.duration }} days</p>
+                                    <p class="card-text mb-1"><strong>Difficulty:</strong> {{ trek.difficulty }}</p>
+                                    <p class="card-text mb-1"><strong>Available Slots:</strong> {{ trek.available_slots }}</p>
+                                    <p class="card-text mb-1">
+                                        <strong>Status:</strong> 
+                                        <span class="badge" :class="getStatusBadgeClass(trek.status)">{{ trek.status }}</span>
+                                    </p>
+                                    <p class="card-text mb-0 text-muted small"><strong>Dates:</strong> {{ trek.start_date }} to {{ trek.end_date }}</p>
+                                </div>
+                                <div class="card-footer bg-transparent" v-if="currentUser.role === 'user'">
+                                    <button class="btn btn-outline-primary btn-sm w-100" :disabled="trek.status !== 'open' || trek.available_slots <= 0 || loading" @click="handleCreateBooking(trek)">
+                                        Book This Trek
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ASSIGNED TREKS (Staff Only) -->
+                <div v-else-if="selectedPage === 'assigned-treks'">
+                    <h5>My Assigned Treks</h5>
+                    <div v-if="treksLoading" class="text-center py-3">
+                        <div class="spinner-border text-primary"></div>
+                    </div>
+                    <div v-else-if="assignedTreks.length === 0" class="text-muted">No treks currently assigned to you.</div>
+                    <div v-else class="row g-3">
+                        <div v-for="trek in assignedTreks" :key="trek.trek_id || trek.id" class="col-md-6">
+                            <div class="card shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="card-title mb-1">{{ trek.trek_name || trek.name }}</h6>
+                                            <p class="card-text text-muted mb-1">{{ trek.location }}</p>
+                                        </div>
+                                        <span class="badge" :class="getStatusBadgeClass(trek.status)">{{ trek.status }}</span>
+                                    </div>
+                                    <p class="mb-1"><strong>Duration:</strong> {{ trek.duration }} days</p>
+                                    <p class="mb-1"><strong>Available Slots:</strong> {{ trek.available_slots }}</p>
+                                    <p class="mb-1"><strong>Dates:</strong> {{ trek.start_date || 'TBD' }} to {{ trek.end_date || 'TBD' }}</p>
+                                </div>
+                                <div class="card-footer bg-white">
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <button v-if="trek.status !== 'started' && trek.status !== 'complete'" class="btn btn-sm btn-warning" :disabled="loading" @click="handleUpdateAssignedTrekStatus(trek, 'started')">
+                                            Mark Started
+                                        </button>
+                                        <button v-if="trek.status !== 'complete'" class="btn btn-sm btn-success" :disabled="loading" @click="handleUpdateAssignedTrekStatus(trek, 'complete')">
+                                            Mark Completed
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOOKINGS PAGE -->
+                <div v-else-if="selectedPage === 'bookings'">
+                    <h5>All Bookings</h5>
+                    <div v-if="bookingsLoading" class="text-center py-3">
+                        <div class="spinner-border text-primary"></div>
+                    </div>
+                    <div v-else-if="allBookings.length === 0" class="text-muted">No bookings found.</div>
+                    <div v-else class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Booking ID</th>
+                                    <th>Trek ID / Name</th>
+                                    <th>User ID</th>
+                                    <th>Booking Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="b in allBookings" :key="b.booking_id || b.id">
+                                    <td>{{ b.booking_id || b.id }}</td>
+                                    <td>{{ b.trek_name || b.trek_id }}</td>
+                                    <td>{{ b.user_id || b.username }}</td>
+                                    <td>{{ b.booking_date || b.date || 'N/A' }}</td>
+                                    <td>
+                                        <span class="badge bg-success">{{ b.status || 'Confirmed' }}</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- STAFF LIST PAGE -->
+                <div v-else-if="selectedPage === 'staff'">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-column flex-md-row gap-3">
+                        <div>
+                            <h5 class="mb-0">Staff Directory</h5>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <input v-if="currentUser.role === 'admin'" type="text" class="form-control form-control-sm" placeholder="Search staff..." v-model="searchStaffQuery" @keyup.enter="searchStaff" style="min-width: 220px;" />
+                            <button v-if="currentUser.role === 'admin'" class="btn btn-secondary btn-sm" @click="searchStaff">Search</button>
+                            <button v-if="currentUser.role === 'admin'" class="btn btn-outline-secondary btn-sm" @click="clearStaffSearch">Clear</button>
+                            <button v-if="currentUser.role === 'admin'" class="btn btn-primary btn-sm" @click="showCreateStaffForm = !showCreateStaffForm">
+                                {{ showCreateStaffForm ? 'Cancel' : '+ Create Staff' }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="showCreateStaffForm && currentUser.role === 'admin'" class="card card-body mb-4 bg-light">
+                        <h6 class="mb-3">Create Staff User</h6>
+                        <form @submit.prevent="handleCreateStaff" class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">User Name</label>
+                                <input type="text" class="form-control" v-model="newStaff.username" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" v-model="newStaff.email" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Phone</label>
+                                <input type="text" class="form-control" v-model="newStaff.phone_num" required />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Password</label>
+                                <input type="password" class="form-control" v-model="newStaff.password" required />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Confirm Password</label>
+                                <input type="password" class="form-control" v-model="newStaff.confirmPassword" required />
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-success btn-sm" :disabled="loading">
+                                    <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
+                                    Create Staff
+                                </button>
+                            </div>
+                            <div v-if="staffCreateError" class="col-12 alert alert-danger py-2 small">
+                                {{ staffCreateError }}
+                            </div>
+                            <div v-if="staffCreateSuccess" class="col-12 alert alert-success py-2 small">
+                                Staff user created successfully.
+                            </div>
+                        </form>
+                    </div>
+
+                    <div v-if="staffListLoading" class="text-center py-3">
+                        <div class="spinner-border text-primary"></div>
+                    </div>
+                    <div v-else-if="staffList.length === 0" class="text-muted">No staff found.</div>
+                    <ul v-else class="list-group mt-2">
+                        <li class="list-group-item d-flex justify-content-between align-items-center" v-for="person in staffList" :key="person.id || person.user_id">
+                            <div>
+                                <strong>{{ person.user_name || person.username || person.name }}</strong>
+                                <span class="text-muted small d-block">{{ person.email_id || person.email || 'No email' }}</span>
+                                <span class="text-muted small">Role: {{ person.type_of_user || person.role || 'Staff' }}</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span :class="['badge', person.is_active ? 'bg-info text-dark' : 'bg-danger']">
+                                    {{ person.is_active ? 'Active' : 'Deactivated' }}
+                                </span>
+                                <button v-if="currentUser.role === 'admin'" class="btn" :class="person.is_active ? 'btn-outline-danger btn-sm' : 'btn-outline-success btn-sm'" @click="handleToggleUserActivation(person)" :disabled="loading">
+                                    {{ person.is_active ? 'Deactivate' : 'Reactivate' }}
+                                </button>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div v-else-if="selectedPage === 'users'">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-column flex-md-row gap-3">
+                        <div>
+                            <h5 class="mb-0">User Accounts</h5>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <input type="text" class="form-control form-control-sm" placeholder="Search users..." v-model="searchUserQuery" @keyup.enter="searchUsers" style="min-width: 220px;" />
+                            <button class="btn btn-secondary btn-sm" @click="searchUsers">Search</button>
+                            <button class="btn btn-outline-secondary btn-sm" @click="clearUserSearch">Clear</button>
+                        </div>
+                    </div>
+
+                    <div v-if="usersLoading" class="text-center py-3">
+                        <div class="spinner-border text-primary"></div>
+                    </div>
+                    <div v-else-if="usersList.length === 0" class="text-muted">No users found.</div>
+                    <ul v-else class="list-group mt-2">
+                        <li class="list-group-item d-flex justify-content-between align-items-center" v-for="person in usersList" :key="person.id || person.user_id">
+                            <div>
+                                <strong>{{ person.user_name || person.username || person.name }}</strong>
+                                <span class="text-muted small d-block">{{ person.email_id || person.email || 'No email' }}</span>
+                                <span class="text-muted small">Role: {{ person.type_of_user || person.role || 'User' }}</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span :class="['badge', person.is_active ? 'bg-info text-dark' : 'bg-danger']">
+                                    {{ person.is_active ? 'Active' : 'Deactivated' }}
+                                </span>
+                                <button v-if="currentUser.role === 'admin'" class="btn" :class="person.is_active ? 'btn-outline-danger btn-sm' : 'btn-outline-success btn-sm'" @click="handleToggleUserActivation(person)" :disabled="loading">
+                                    {{ person.is_active ? 'Deactivate' : 'Reactivate' }}
+                                </button>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:5000/users';
+
+        const apiClient = axios.create({
+            baseURL: API_BASE_URL,
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        apiClient.interceptors.request.use(
+            config => {
+                const token = localStorage.getItem('authToken');
+                if (token) config.headers.Authorization = `Bearer ${token}`;
+                return config;
+            },
+            error => Promise.reject(error)
+        );
+
+        Vue.createApp({
+            data() {
+                return {
+                    loggedIn: false,
+                    loading: false,
+                    loginError: '',
+                    loginForm: { username: '', password: '' },
+
+                    showRegister: false,
+                    registerError: '',
+                    registerSuccess: false,
+                    registerForm: { name: '', email: '', password: '', confirmPassword: '', phone_num: '' },
+
+                    currentUser: { id: null, username: '', role: '' },
+                    selectedPage: 'dashboard',
+
+                    // Data States
+                    treksLoading: false,
+                    treks: [],
+                    assignedTreks: [],
+
+                    bookingsLoading: false,
+                    allBookings: [],
+
+                    staffListLoading: false,
+                    staffList: [],
+                    usersLoading: false,
+                    usersList: [],
+
+                    // Trek Creation Form
+                    showCreateTrekForm: false,
+                    newTrek: { 
+                        trek_name: '', 
+                        price: '', 
+                        location: '', 
+                        difficulty: 'Easy', 
+                        duration: '', 
+                        available_slots: '', 
+                        assigned_slot: '',
+                        assigned_staff_id: '', 
+                        status: 'open', 
+                        start_date: '', 
+                        end_date: '' 
+                    },
+
+                    // Staff creation for admin
+                    showCreateStaffForm: false,
+                    newStaff: {
+                        username: '',
+                        email: '',
+                        password: '',
+                        confirmPassword: '',
+                        phone_num: ''
+                    },
+                    staffCreateError: '',
+                    staffCreateSuccess: false,
+                    searchTrekQuery: '',
+                    searchTrekStatus: '',
+                    searchTrekDifficulty: '',
+                    searchStaffQuery: '',
+                    searchUserQuery: ''
+                };
+            },
+            computed: {
+                navLinks() {
+                    const role = this.currentUser.role;
+                    const links = [{ text: 'Dashboard', key: 'dashboard' }];
+
+                    if (role === 'admin') {
+                        links.push({ text: 'Treks', key: 'treks' });
+                        links.push({ text: 'Bookings', key: 'bookings' });
+                        links.push({ text: 'Staff', key: 'staff' });
+                        links.push({ text: 'Users', key: 'users' });
+                    } else if (role === 'staff') {
+                        links.push({ text: 'Assigned Treks', key: 'assigned-treks' });
+                        links.push({ text: 'All Treks', key: 'treks' });
+                        links.push({ text: 'Bookings', key: 'bookings' });
+                    } else {
+                        links.push({ text: 'Browse Treks', key: 'treks' });
+                        links.push({ text: 'My Bookings', key: 'bookings' });
+                    }
+                    return links;
+                }
+            },
+            mounted() {
+                const savedUser = localStorage.getItem('userData');
+                if (savedUser) {
+                    try {
+                        this.currentUser = JSON.parse(savedUser);
+                        this.loggedIn = true;
+                        this.loadInitialData();
+                    } catch (e) {
+                        localStorage.removeItem('userData');
+                    }
+                }
+            },
+            methods: {
+                clearMessages() {
+                    this.loginError = '';
+                    this.registerError = '';
+                    this.registerSuccess = false;
+                },
+                selectPage(key) {
+                    this.selectedPage = key;
+                    if (key === 'treks') this.fetchTreks();
+                    if (key === 'bookings') this.fetchAllBookings();
+                    if (key === 'staff') this.fetchStaff();
+                    if (key === 'users') this.fetchUsers();
+                    if (key === 'assigned-treks') this.fetchAssignedTreks();
+                },
+                loadInitialData() {
+                    this.fetchTreks();
+                    if (this.currentUser.role === 'staff') {
+                        this.fetchAssignedTreks();
+                    }
+                    if (this.currentUser.role === 'admin') {
+                        this.fetchStaff();
+                        this.fetchUsers();
+                        this.fetchAllBookings();
+                    } else if (this.currentUser.role === 'user') {
+                        this.fetchAllBookings();
+                    }
+                },
+                validateDateFormat(dateStr) {
+                    const regex = /^\d{4}-\d{2}-\d{2}$/;
+                    if (!regex.test(dateStr)) return false;
+                    const d = new Date(dateStr);
+                    return d instanceof Date && !isNaN(d) && d.toISOString().slice(0, 10) === dateStr;
+                },
+                getStatusBadgeClass(status) {
+                    switch (status) {
+                        case 'open': return 'bg-success';
+                        case 'started': return 'bg-warning text-dark';
+                        case 'approved': return 'bg-primary';
+                        case 'pending': return 'bg-warning text-dark';
+                        case 'complete': return 'bg-info text-dark';
+                        case 'closed': return 'bg-secondary';
+                        default: return 'bg-secondary';
+                    }
+                },
+                parseJwt(token) {
+                    if (!token) return null;
+                    const parts = token.split('.');
+                    if (parts.length !== 3) return null;
+                    const base64Url = parts[1];
+                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                    try {
+                        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+                        return JSON.parse(jsonPayload);
+                    } catch (error) {
+                        console.error('Failed to decode JWT payload:', error);
+                        return null;
+                    }
+                },
+
+                // --- AUTHENTICATION ---
+                async handleLogin() {
+                    this.loading = true;
+                    this.loginError = '';
+                    try {
+                        const res = await apiClient.post('/login', {
+                            username: this.loginForm.username,
+                            password: this.loginForm.password
+                        });
+
+                        const token = res.data.token;
+                        if (token) {
+                            localStorage.setItem('authToken', token);
+                        }
+
+                        const payload = this.parseJwt(token);
+                        const loggedUserId = res.data.user_id || res.data.id || payload?.sub || payload?.identity;
+                        const username = payload?.username || res.data.username || this.loginForm.username;
+                        const role = payload?.role || res.data.role || res.data.type_of_user || 'user';
+
+                        if (!loggedUserId) {
+                            console.error('Login response missing user ID:', res.data, payload);
+                            alert('Login succeeded, but backend did not return a user_id!');
+                            return;
+                        }
+
+                        const user = {
+                            id: parseInt(loggedUserId),
+                            username,
+                            role
+                        };
+
+                        this.currentUser = user;
+                        this.loggedIn = true;
+                        localStorage.setItem('userData', JSON.stringify(user));
+
+                        this.selectedPage = 'dashboard';
+                        this.loadInitialData();
+                    } catch (error) {
+                        this.loginError = error.response?.data?.message || 'Invalid username or password.';
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async handleRegister() {
+                    this.loading = true;
+                    this.registerError = '';
+                    this.registerSuccess = false;
+
+                    if (this.registerForm.password !== this.registerForm.confirmPassword) {
+                        this.registerError = 'Passwords do not match.';
+                        this.loading = false;
+                        return;
+                    }
+
+                    try {
+                        await apiClient.post('/register', {
+                            username: this.registerForm.name.trim(),
+                            email_id: this.registerForm.email.trim(),
+                            password: this.registerForm.password,
+                            phone_num: this.registerForm.phone_num
+                        });
+                        this.registerSuccess = true;
+                        this.registerForm = { name: '', email: '', password: '', confirmPassword: '', phone_num: '' };
+                    } catch (error) {
+                        this.registerError = error.response?.data?.message || 'Registration failed.';
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                handleLogout() {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userData');
+                    this.loggedIn = false;
+                    this.currentUser = { id: null, username: '', role: '' };
+                },
+
+                // --- DATA FETCHING ---
+                async fetchTreks() {
+                    this.treksLoading = true;
+                    try {
+                        const res = await apiClient.get('/get_trek');
+                        this.treks = Array.isArray(res.data) ? res.data : [];
+                    } catch (error) {
+                        console.error('Failed to fetch treks:', error);
+                    } finally {
+                        this.treksLoading = false;
+                    }
+                },
+                async fetchAssignedTreks() {
+                    if (!this.currentUser.id) return;
+                    this.treksLoading = true;
+                    try {
+                        const res = await apiClient.get(`/get_assigned_treks/${this.currentUser.id}`);
+                        this.assignedTreks = Array.isArray(res.data) ? res.data : [];
+                    } catch (error) {
+                        console.error('Failed to fetch assigned treks:', error);
+                    } finally {
+                        this.treksLoading = false;
+                    }
+                },
+                async searchTreks() {
+                    const query = this.searchTrekQuery?.trim();
+                    const status = this.searchTrekStatus;
+                    const difficulty = this.searchTrekDifficulty;
+
+                    if (!query && !status && !difficulty) {
+                        return this.fetchTreks();
+                    }
+
+                    try {
+                        const res = await apiClient.get(`/search_treks/${this.currentUser.id}`, {
+                            params: {
+                                q: query || undefined,
+                                status: status || undefined,
+                                difficulty: difficulty || undefined,
+                            }
+                        });
+                        this.treks = Array.isArray(res.data) ? res.data : [];
+                    } catch (error) {
+                        console.error('Failed to search treks:', error);
+                        this.treks = [];
+                    }
+                },
+                clearTrekSearch() {
+                    this.searchTrekQuery = '';
+                    this.searchTrekStatus = '';
+                    this.searchTrekDifficulty = '';
+                    this.fetchTreks();
+                },
+                async searchStaff() {
+                    if (!this.currentUser.role || this.currentUser.role !== 'admin') {
+                        return;
+                    }
+
+                    const query = this.searchStaffQuery?.trim();
+                    if (!query) {
+                        return this.fetchStaff();
+                    }
+
+                    try {
+                        const res = await apiClient.get(`/search_staff/${this.currentUser.id}`, { params: { q: query } });
+                        this.staffList = Array.isArray(res.data) ? res.data : [];
+                    } catch (error) {
+                        console.error('Failed to search staff:', error);
+                        this.staffList = [];
+                    }
+                },
+                clearStaffSearch() {
+                    this.searchStaffQuery = '';
+                    this.fetchStaff();
+                },
+                async searchUsers() {
+                    if (!this.currentUser.role || this.currentUser.role !== 'admin') {
+                        return;
+                    }
+
+                    const query = this.searchUserQuery?.trim();
+                    if (!query) {
+                        return this.fetchUsers();
+                    }
+
+                    try {
+                        const res = await apiClient.get(`/search_users/${this.currentUser.id}`, { params: { q: query } });
+                        this.usersList = Array.isArray(res.data) ? res.data : [];
+                    } catch (error) {
+                        console.error('Failed to search users:', error);
+                        this.usersList = [];
+                    }
+                },
+                clearUserSearch() {
+                    this.searchUserQuery = '';
+                    this.fetchUsers();
+                },
+                async handleUpdateAssignedTrekStatus(trek, status) {
+                    if (!this.currentUser.id || !trek?.trek_id) return;
+                    this.loading = true;
+                    try {
+                        await apiClient.post(`/update_trek/${this.currentUser.id}/${trek.trek_id}`, { status });
+                        await this.fetchAssignedTreks();
+                        alert(`Trek marked as ${status}.`);
+                    } catch (error) {
+                        alert(error.response?.data?.message || 'Failed to update trek status.');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async fetchStaff() {
+                    this.staffListLoading = true;
+                    if (!this.currentUser?.id) {
+                        this.staffListLoading = false;
+                        return;
+                    }
+                    try {
+                        const res = await apiClient.get(`/get_all_staff/${this.currentUser.id}`);
+                        this.staffList = Array.isArray(res.data) ? res.data : [];
+                    } catch (error) {
+                        console.error('Failed to fetch staff:', error);
+                        this.staffList = [];
+                    } finally {
+                        this.staffListLoading = false;
+                    }
+                },
+                async fetchUsers() {
+                    this.usersLoading = true;
+                    if (!this.currentUser?.id) {
+                        this.usersLoading = false;
+                        return;
+                    }
+                    try {
+                        const res = await apiClient.get(`/get_all_users/${this.currentUser.id}`);
+                        this.usersList = Array.isArray(res.data) ? res.data : [];
+                    } catch (error) {
+                        console.error('Failed to fetch users:', error);
+                        this.usersList = [];
+                    } finally {
+                        this.usersLoading = false;
+                    }
+                },
+                async handleToggleUserActivation(person) {
+                    if (!this.currentUser?.id || !person?.user_id) return;
+                    const action = person.is_active ? 'deactivate' : 'reactivate';
+                    if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} ${person.user_name || person.username || 'this user'}?`)) return;
+
+                    this.loading = true;
+                    try {
+                        const endpoint = person.is_active
+                            ? `/deactivate_user/${this.currentUser.id}/${person.user_id}`
+                            : `/activate_user/${this.currentUser.id}/${person.user_id}`;
+                        await apiClient.post(endpoint);
+                        if (this.selectedPage === 'users') {
+                            await this.fetchUsers();
+                        } else {
+                            await this.fetchStaff();
+                        }
+                        alert(`User has been ${person.is_active ? 'deactivated' : 'reactivated'}.`);
+                    } catch (error) {
+                        alert(error.response?.data?.message || `Failed to ${action} user.`);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async fetchAllBookings() {
+                    this.bookingsLoading = true;
+                    if (!this.currentUser?.id) {
+                        this.bookingsLoading = false;
+                        return;
+                    }
+                    try {
+                        const url = this.currentUser.role === 'admin'
+                            ? `/get_all_bookings/${this.currentUser.id}`
+                            : `/get_bookings/${this.currentUser.id}`;
+                        const res = await apiClient.get(url);
+                        this.allBookings = Array.isArray(res.data) ? res.data : [];
+                    } catch (error) {
+                        console.error('Failed to fetch bookings:', error);
+                        this.allBookings = [];
+                    } finally {
+                        this.bookingsLoading = false;
+                    }
+                },
+
+                // --- ACTION HANDLERS ---
+                async handleCreateTrek() {
+                    if (!this.validateDateFormat(this.newTrek.start_date) || !this.validateDateFormat(this.newTrek.end_date)) {
+                        alert('Invalid date format! Please enter start_date and end_date in YYYY-MM-DD format.');
+                        return;
+                    }
+
+                    this.loading = true;
+                    try {
+                        const payload = {
+                            trek_name: this.newTrek.trek_name,
+                            location: this.newTrek.location,
+                            price: parseFloat(this.newTrek.price),
+                            duration: parseInt(this.newTrek.duration),
+                            difficulty: this.newTrek.difficulty,
+                            available_slots: String(this.newTrek.available_slots),
+                            assigned_slot: this.newTrek.assigned_slot || null,
+                            assigned_staff_id: parseInt(this.newTrek.assigned_staff_id),
+                            status: this.newTrek.status,
+                            start_date: this.newTrek.start_date,
+                            end_date: this.newTrek.end_date
+                        };
+
+                        await apiClient.post(`/create_trek/${this.currentUser.id}`, payload);
+                        alert('Trek created successfully!');
+                        this.showCreateTrekForm = false;
+                        
+                        this.newTrek = { 
+                            trek_name: '', 
+                            price: '', 
+                            location: '', 
+                            difficulty: 'Easy', 
+                            duration: '', 
+                            available_slots: '', 
+                            assigned_slot: '',
+                            assigned_staff_id: '', 
+                            status: 'open', 
+                            start_date: '', 
+                            end_date: '' 
+                        };
+                        
+                        this.fetchTreks();
+                    } catch (error) {
+                        alert(error.response?.data?.message || 'Failed to create trek.');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async handleCreateStaff() {
+                    this.staffCreateError = '';
+                    this.staffCreateSuccess = false;
+
+                    if (this.newStaff.password !== this.newStaff.confirmPassword) {
+                        this.staffCreateError = 'Passwords do not match.';
+                        return;
+                    }
+
+                    this.loading = true;
+                    try {
+                        await apiClient.post(`/register_staff/${this.currentUser.id}`, {
+                            username: this.newStaff.username.trim(),
+                            password: this.newStaff.password,
+                            email_id: this.newStaff.email.trim(),
+                            phone_num: this.newStaff.phone_num.trim()
+                        });
+                        this.staffCreateSuccess = true;
+                        this.showCreateStaffForm = false;
+                        this.newStaff = { username: '', email: '', password: '', confirmPassword: '', phone_num: '' };
+                        await this.fetchStaff();
+                    } catch (error) {
+                        this.staffCreateError = error.response?.data?.message || 'Failed to create staff.';
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async handleCreateBooking(trek) {
+                    // Log trek object to inspect keys in Browser Developer Tools (F12 -> Console)
+                    console.log('Selected Trek Data:', trek);
+
+                    // Fallback through common primary key names
+                    const trekId = trek.trek_id || trek.id || trek.id_trek || trek._id;
+
+                    if (!trekId) {
+                        alert('Could not determine Trek ID. Check API response keys.');
+                        return;
+                    }
+
+                    this.loading = true;
+                    try {
+                        const payload = {
+                            user_id: parseInt(this.currentUser.id),
+                            trek_id: parseInt(trekId)
+                        };
+                        await apiClient.post('/create_booking', payload);
+                        alert(`Booking request sent for ${trek.trek_name || trek.name || 'Trek'}!`);
+                        this.fetchTreks();
+                    } catch (error) {
+                        alert(error.response?.data?.message || 'Booking failed.');
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
